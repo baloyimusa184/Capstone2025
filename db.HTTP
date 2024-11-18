@@ -1,0 +1,20 @@
+### Register a user
+POST http://localhost:3000/api/register
+Content-Type: application/json
+
+{
+  "username": "host",
+  "pass": "password123"
+}
+
+### Login a user
+POST http://localhost:3000/api/login
+Content-Type: application/json
+
+{
+  "username": "host",
+  "pass": "password123"
+}
+
+### Delete a user
+DELETE http://localhost:3000/api/users/8
