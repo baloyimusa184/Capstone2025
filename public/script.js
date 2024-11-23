@@ -1,114 +1,87 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if the user is logged in based on sessionStorage
-    const userId = sessionStorage.getItem('userId');
-    if (userId) {
-        // If logged in, redirect to home page
-        window.location.href = '/home.html';
-    }
-
-    // Register a new user
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const username = document.getElementById('registerUsername').value;
-            const pass = document.getElementById('registerPassword').value;
-
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, pass }),
-                });
-
-                const result = await response.json();
-
-                if (result.message) {
-                    alert(result.message);
-                    // No automatic login after registration
-                    alert('Please log in using your credentials');
-                } else {
-                    alert(result.error);
-                }
-            } catch (err) {
-                console.error('Error registering user:', err);
-            }
-        });
-    }
-
-// Login user
-document.getElementById('loginForm').addEventListener('submit', async (event) => {
+// Register
+document.getElementById('registerForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const username = document.getElementById('registerUsername').value;
+    const pass = document.getElementById('registerPassword').value;
 
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, pass }),
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert(result.message);
+        } else {
+            alert(result.error);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+// Login
+document.getElementById('loginForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const pass = document.getElementById('loginPassword').value;
 
     try {
         const response = await fetch('/api/login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, pass }),
         });
 
         const result = await response.json();
-
         if (response.ok) {
-            alert(result.message);
-
-            // Save user data in session storage
             sessionStorage.setItem('userId', result.userId);
             sessionStorage.setItem('username', username);
-
-            // Redirect to home page
             window.location.href = '/home.html';
         } else {
             alert(result.error);
         }
     } catch (err) {
-        console.error('Error logging in user:', err);
+        console.error(err);
     }
 });
 
-
-    // Delete user
-    const deleteAccountButton = document.getElementById('deleteAccountButton');
-    if (deleteAccountButton) {
-        deleteAccountButton.addEventListener('click', async () => {
-            const userId = sessionStorage.getItem('userId');
-            if (!userId) {
-                alert('You need to be logged in to delete your account!');
-                return;
-            }
-
-            const confirmDelete = confirm('Are you sure you want to delete your account?');
-            if (confirmDelete) {
-                try {
-                    const response = await fetch(`/api/users/${userId}`, {
-                        method: 'DELETE',
-                    });
-
-                    const result = await response.json();
-                    alert(result.message || result.error);
-
-                    // Clear sessionStorage and redirect to login page
-                    sessionStorage.clear();
-                    window.location.href = '/index.html';  // Redirect to login page after deletion
-                } catch (err) {
-                    console.error('Error deleting user:', err);
-                }
-            }
-        });
-    }
-
- // Logout user
+// Logout
 document.getElementById('logoutButton')?.addEventListener('click', () => {
-    sessionStorage.clear(); // Clear session storage
-    window.location.href = '/index.html'; // Redirect to login page
+    sessionStorage.clear();
+    window.location.href = '/index.html';
 });
 
+// Delete Account
+document.getElementById('deleteAccountButton')?.addEventListener('click', async () => {
+    const userId = sessionStorage.getItem('userId');
+
+    if (confirm('Are you sure you want to delete your account?')) {
+        try {
+            const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                sessionStorage.clear();
+                window.location.href = '/index.html';
+            } else {
+                alert(result.error);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
 });
+
+// AI Recommendations
+if (window.location.pathname === '/ai.html') {
+    fetch('/api/recommendations')
+        .then((response) => response.json())
+        .then((data) => {
+            const recommendations = document.getElementById('recommendations');
+            recommendations.innerHTML = data.meals.map((meal) => `<li>${meal}</li>`).join('');
+        })
+        .catch((err) => console.error('Error fetching recommendations:', err));
+}
