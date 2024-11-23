@@ -39,38 +39,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login user
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
+// Login user
+document.getElementById('loginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-            const username = document.getElementById('loginUsername').value;
-            const pass = document.getElementById('loginPassword').value;
+    const username = document.getElementById('loginUsername').value;
+    const pass = document.getElementById('loginPassword').value;
 
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, pass }),
-                });
-
-                const result = await response.json();
-
-                if (result.userId) {
-                    alert(result.message);
-                    sessionStorage.setItem('userId', result.userId);
-                    window.location.href = '/home.html';  // Redirect to home page after successful login
-                } else {
-                    alert(result.error);
-                }
-            } catch (err) {
-                console.error('Error logging in user:', err);
-            }
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, pass }),
         });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(result.message);
+
+            // Save user data in session storage
+            sessionStorage.setItem('userId', result.userId);
+            sessionStorage.setItem('username', username);
+
+            // Redirect to home page
+            window.location.href = '/home.html';
+        } else {
+            alert(result.error);
+        }
+    } catch (err) {
+        console.error('Error logging in user:', err);
     }
+});
+
 
     // Delete user
     const deleteAccountButton = document.getElementById('deleteAccountButton');
@@ -102,15 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Log out
-    const logoutLink = document.querySelector('a[href="/logout"]');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', (event) => {
-            event.preventDefault();
-            // Clear sessionStorage
-            sessionStorage.clear();
-            // Redirect to login page
-            window.location.href = '/index.html';
-        });
-    }
+ // Logout user
+document.getElementById('logoutButton')?.addEventListener('click', () => {
+    sessionStorage.clear(); // Clear session storage
+    window.location.href = '/index.html'; // Redirect to login page
+});
+
 });

@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/style.css">
     <title>My Health Management</title>
+    <script>
+        // Redirect to login if user is not logged in
+        if (!sessionStorage.getItem('userId')) {
+            window.location.href = '/index.html';
+        }
+    </script>
 </head>
 <body>
     <header>
         <h1>Diabetes-Friendly Food App</h1>
         <nav>
-            <ul>
-                <li><a href="/logout" id="logoutLink">Log Out</a></li>
-            </ul>
+            <button id="logoutButton">Log Out</button>
+
         </nav>
     </header>
     <main>
