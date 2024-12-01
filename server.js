@@ -1,13 +1,14 @@
-import express from 'express'; 
+import express from 'express';
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import bodyParser from 'body-parser';
 import path from 'path';
+import csv from 'csv-parser';
+import fs from 'fs';
 import bcrypt from 'bcrypt';
-import { generateMealRecommendations } from './utils/aiModel.js';
 
 const app = express();
-const port = 2525;
+const port = 3000;
 
 app.use(bodyParser.json());
 app.use(express.static(path.resolve('public')));
@@ -22,7 +23,7 @@ dbPromise.then((db) => db.run(`
     );
 `));
 
-// Register
+// **Register**
 app.post('/api/register', async (req, res) => {
     const { username, pass } = req.body;
     try {
@@ -38,7 +39,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Login
+// **Login**
 app.post('/api/login', async (req, res) => {
     const { username, pass } = req.body;
     try {
@@ -55,7 +56,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Delete Account
+// **Delete Account**
 app.delete('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -67,10 +68,49 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 });
 
-// AI Recommendations
-app.get('/api/recommendations', (req, res) => {
-    const meals = generateMealRecommendations();
-    res.json({ meals });
+//AI recommender
+app.post('/api/recommend', (req, res) => {
+    const { meal_type } = req.body;
+
+    console.log("Received meal_type:", meal_type); // Debug: log the received meal type
+
+    const recommendations = [];
+    const csvFilePath = path.resolve('./meal_recommendations.csv'); // Path to the CSV file
+
+    fs.createReadStream(csvFilePath)
+    .pipe(csv({
+        skipEmptyLines: true, // Skip empty lines in the CSV
+    }))
+    .on('data', (row) => {
+        // Trim BOM if present and clean up spaces
+        for (const key in row) {
+            if (row.hasOwnProperty(key)) {
+                row[key] = row[key].replace(/^\uFEFF/, '').trim(); // Remove BOM and trim
+            }
+        }
+
+        console.log("Row:", row); // Log row for inspection
+
+        if (row['Meal Type'] && row['Food Items']) {
+            if (row['Meal Type'].trim().toLowerCase() === meal_type.trim().toLowerCase()) {
+                recommendations.push(row['Food Items']);
+            }
+        } else {
+            console.warn("Skipping row due to missing 'Meal Type' or 'Food Items':", row);
+        }
+    })
+    .on('end', () => {
+        console.log("Sending recommendations:", recommendations);
+        res.json({ recommendations });
+    })
+    .on('error', (err) => {
+        console.error("Error reading CSV:", err);
+        res.status(500).send("Error processing recommendations");
+    });
+
+
 });
 
+
+// Start server
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));
