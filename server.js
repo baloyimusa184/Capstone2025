@@ -68,49 +68,66 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 });
 
-//AI recommender
+// Function to check if the current time falls near the meal's time
+function isTimeMatch(currentTime, csvTime) {
+    const [csvHour, csvMinute] = csvTime.split(':').map((part) => {
+        return parseInt(part.replace(/[^\d]/g, ''), 10); // Removes AM/PM characters
+    });
+    const isPM = csvTime.toLowerCase().includes('pm');
+    const csvHours24 = isPM && csvHour !== 12 ? csvHour + 12 : csvHour;
+
+    const csvTotalMinutes = csvHours24 * 60 + csvMinute;
+    const currentHours = currentTime.getHours();
+    const currentMinutes = currentTime.getMinutes();
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+    // Allow meals within a range of 60 minutes around the recorded time
+    return Math.abs(currentTotalMinutes - csvTotalMinutes) <= 60;
+}
+
+// AI recommender endpoint
 app.post('/api/recommend', (req, res) => {
     const { meal_type } = req.body;
 
-    console.log("Received meal_type:", meal_type); // Debug: log the received meal type
+    console.log("Received meal_type:", meal_type);
 
     const recommendations = [];
-    const csvFilePath = path.resolve('./meal_recommendations.csv'); // Path to the CSV file
+    const csvFilePath = path.resolve('./meal_recommendations.csv');
+    const currentTime = new Date();
 
     fs.createReadStream(csvFilePath)
-    .pipe(csv({
-        skipEmptyLines: true, // Skip empty lines in the CSV
-    }))
-    .on('data', (row) => {
-        // Trim BOM if present and clean up spaces
-        for (const key in row) {
-            if (row.hasOwnProperty(key)) {
-                row[key] = row[key].replace(/^\uFEFF/, '').trim(); // Remove BOM and trim
+        .pipe(csv({ skipEmptyLines: true }))
+        .on('data', (row) => {
+            // Remove BOM and trim whitespace
+            for (const key in row) {
+                if (row.hasOwnProperty(key)) {
+                    row[key] = row[key].replace(/^\uFEFF/, '').trim();
+                }
             }
-        }
 
-        console.log("Row:", row); // Log row for inspection
+            if (row['Meal Type'] && row['Food Items'] && row['Time']) {
+                const rowMealType = row['Meal Type'].trim().toLowerCase();
+                const rowTime = row['Time'].trim();
 
-        if (row['Meal Type'] && row['Food Items']) {
-            if (row['Meal Type'].trim().toLowerCase() === meal_type.trim().toLowerCase()) {
-                recommendations.push(row['Food Items']);
+                if (
+                    rowMealType === meal_type.trim().toLowerCase() &&
+                    isTimeMatch(currentTime, rowTime)
+                ) {
+                    recommendations.push(row['Food Items']);
+                }
+            } else {
+                console.warn("Skipping row due to missing data:", row);
             }
-        } else {
-            console.warn("Skipping row due to missing 'Meal Type' or 'Food Items':", row);
-        }
-    })
-    .on('end', () => {
-        console.log("Sending recommendations:", recommendations);
-        res.json({ recommendations });
-    })
-    .on('error', (err) => {
-        console.error("Error reading CSV:", err);
-        res.status(500).send("Error processing recommendations");
-    });
-
-
+        })
+        .on('end', () => {
+            console.log("Sending recommendations:", recommendations);
+            res.json({ recommendations });
+        })
+        .on('error', (err) => {
+            console.error("Error reading CSV:", err);
+            res.status(500).send("Error processing recommendations");
+        });
 });
-
 
 // Start server
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));
